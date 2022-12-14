@@ -1,68 +1,76 @@
-from datetime import time
-from time import sleep
-from timeit import timeit
-
 import numpy as np
 
 
 class Playfair:
+    """Класс для кодирования/декодирования при помощи шифра Плейфера"""
+
     alphabet = [chr(i) for i in range(1040, 1072)]
 
     @staticmethod
-    def find_indexes(s: str, matrix: np.array):
+    def find_indexes(bigram: str, matrix: np.array) -> tuple:
+        """Поиск индексов элементов биграммы в матрице"""
         i1, i2 = None, None
         for i in range(4):
             for j in range(8):
-                if matrix[i][j] == s[0]:
+                if matrix[i][j] == bigram[0]:
                     i1 = (i, j)
-                if matrix[i][j] == s[1]:
+                if matrix[i][j] == bigram[1]:
                     i2 = (i, j)
+
         return i1, i2
 
     @staticmethod
-    def make_matrix(key: str):
+    def make_matrix(key: str) -> np.array:
+        """Создание матрицы шифра на основе ключевого слова и русского алфавита"""
+
+        # Удаление повторов букв из ключа
         unique_key = list(map(lambda x: x.upper(), list(dict.fromkeys(key))))
 
+        # Вычитание ключа из алфавита
         alpha_without_key = [item for item in Playfair.alphabet if item not in frozenset(unique_key)]
 
+        # Получение данных для матрицы (сложение ключа и оставшейся части алфавита)
         matrix_data = unique_key + alpha_without_key
 
+        # Создание матрицы
         matrix = np.array(matrix_data)
         matrix.shape = (4, 8)
+
         return matrix
 
     @staticmethod
-    def encrypt(string: str, key: str):
+    def encrypt(message: str, key: str) -> str:
+        """Шифрование переданной строки с использованием ключа"""
 
+        # Создание матрицы
         matrix = Playfair.make_matrix(key)
 
-        # print(matrix)
+        # Удаление всех символов, не встречающихся в алфавите
+        message = message.upper()
+        str_list = list(s for s in message if s in Playfair.alphabet)
 
-        str_list = list(string.upper().replace(" ", ""))
-
-        # print(len(str_list))
-        # print(str_list)
-
-        bigramm_list = []
-
+        # Получение биграмм со всавкой "Ъ" между повторяющимися буквами и в конце сообщения, если число букв нечетное
+        bigram_list = []
         while True:
             if len(str_list) > 1:
                 l1, l2 = str_list.pop(0), str_list.pop(0)
                 if l1 == l2:
-                    bigramm_list.append(l1 + "Ъ")
+                    bigram_list.append(l1 + "Ъ")
                     str_list.insert(0, l2)
                 else:
-                    bigramm_list.append(l1 + l2)
+                    bigram_list.append(l1 + l2)
             elif len(str_list) == 1:
                 l1, l2 = str_list.pop(0), "Ъ"
-                bigramm_list.append(l1 + l2)
+                bigram_list.append(l1 + l2)
             else:
                 break
-        # print(bigramm_list)
 
+        # print(matrix)
+        # print(bigram_list)
+
+        # Шифрование сообщения при помощи матрицы
         result_str = ""
-
-        for big in bigramm_list:
+        for big in bigram_list:
             i1, i2 = Playfair.find_indexes(big, matrix)
 
             if i1[0] == i2[0]:
@@ -79,18 +87,22 @@ class Playfair:
         return result_str
 
     @staticmethod
-    def decrypt(s: str, key: str):
+    def decrypt(message: str, key: str) -> str:
+        """Дешифрование строки, зашифрованной шифром Плейфера"""
 
+        # Создание матрицы
         matrix = Playfair.make_matrix(key)
-        print(matrix)
-        bigramm_list = [s[i] + s[i + 1] for i in range(0, len(s), 2)]
 
-        print(s)
-        print(bigramm_list)
+        # Получение биграмм
+        message = message.upper()
+        bigram_list = [message[i] + message[i + 1] for i in range(0, len(message), 2)]
 
+        # print(matrix)
+        # print(bigram_list)
+
+        # Дешифровка биграмм при помощи матрицы
         result_str = ""
-
-        for big in bigramm_list:
+        for big in bigram_list:
             i1, i2 = Playfair.find_indexes(big, matrix)
 
             if i1[0] == i2[0]:
@@ -103,17 +115,25 @@ class Playfair:
                 l1 = matrix[i2[0]][i1[1]]
                 l2 = matrix[i1[0]][i2[1]]
 
-            if l2 == "Ъйсц":
-                result_str += l1
-            else:
-                result_str += l1 + l2
+            result_str += l1 + l2
 
-        return result_str
+        # Удаление лишних "Ъ", если таки есть
+        result = ""
+        i = 0
+        while i < len(result_str) - 2:
+            result += result_str[i]
+            if (result_str[i + 1] == "Ъ") and (result_str[i] == result_str[i + 2]):
+                i += 1
+            i += 1
+
+        result += result_str[i:] if result_str[-1] != "Ъ" else result_str[i:-1]
+
+        return result
 
 
 if __name__ == '__main__':
     # s = input()
-    s = "Простой текст для примера ооо абя"
+    s = "Простой текст для примера ооо qqq"
     print(f"text = {s}")
 
     keyword = "Криптография"
